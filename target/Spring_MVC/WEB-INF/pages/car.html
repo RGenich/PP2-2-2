@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<p>"CAR"
+<div th:each="car: ${cars}">
+<p th:text="${car.toString()}">ad</p>
+
+</div>
+
+</body>
+</html>
