@@ -16,8 +16,11 @@ public class CarService {
     private CarDao carDao;
 
     public List<Car> getCars(int count) {
-
         return this.carDao.getCars(count);
+    }
+
+    public int getCarsCount () {
+        return carDao.getCarsCount();
     }
 }
 
