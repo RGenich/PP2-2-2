@@ -1,269 +1,267 @@
-@Library('smsoft-libs')_
+@Library('smsoft-libs') _
 
 pipeline {
     options {
-		disableConcurrentBuilds()
-	}
-	agent any
-	tools {
-		maven 'mvn'
-		jdk 'jdk-15.0.1'
-	}
-	environment {
-        namespace = 'etp'
+        buildDiscarder logRotator(numToKeepStr: '3')
+        disableConcurrentBuilds()
+        ansiColor('xterm')
+    }
+    agent any
+    tools {
+        maven 'mvn-3.6.3'
+        jdk 'jdk-17'
+        // avaliable jdk1.8.0_91, jdk9.0.4, jdk10.0.1, jdk-14.0.1, jdk11.0.2, jdk-13.0.2
+    }
+    environment {
+        commiter_name = sh(script: 'printf $(git show -s --pretty=%an)', returnStdout: true)
         cd_registry_cred = credentials('cd-registry-credentials')
         cd_registry_url = 'cd-registry.cls.sm-soft.ru'
+        appDir = "${WORKSPACE}"
+        // app = "${env.GIT_URL.replaceAll('https://github.com/mbuyakov/', '').replaceAll('.git', '').toLowerCase().replace(".","-").replace("_","-")}-adapter"
+        app = "efp-oati-order-051001-adapter" // hardcode app name if it isn't correct from repo name
         registry_project = 'etp'
-		project = 'EFP.PFO.RestApi'
         version = '1.0'
-        app = 'pfo-rest-api'
-        project_ui = 'EFP.PFO.UI'
-        version_ui = '1.1'
-        app_ui = 'pfo-ui'
-        kubernetes_folder='kubernetes'
+        test_service_cred = credentials('efp-testing-service')
     }
+
     parameters {
-            choice(choices: ['all', 'build_rest', 'build_ui'],
-                    description: 'Choose what you need to build and deploy',
-                    name: 'build_type')
+        choice(choices: ['all', 'build_and_deploy_app', 'update_or_publish_api', 'test_app'],
+                description: 'Choose what you need to build and deploy',
+                name: 'build_type')
     }
-	stages {
-		stage('Initialize') {
-			steps {
-				sh '''
-					echo "PATH = ${PATH}"
-					echo "M2_HOME = ${M2_HOME}"
-				   '''
-			}
-		}
-		stage("[PFO Root] build") {
-	    	when {
-	    	    expression { branch "pfo_ui" }
-	    	    anyOf {
-                    environment name: 'build_type', value: 'all'
-                    environment name: 'build_type', value: 'build_rest'
-                }
-	    	 }
-			steps {
-				sh """
-				mvn -f pom.xml clean install
-				"""
-			}
-		}
-		stage("[PFO RestApi] docker build") {
-	    	when {
-	    	    expression { branch "develop" }
-	    	    anyOf {
-                    environment name: 'build_type', value: 'all'
-                    environment name: 'build_type', value: 'build_rest'
-                }
-	    	 }
 
-			steps {
-				sh """
-				cd ${project}
-				docker image build -t ${app}:${version}-${BUILD_NUMBER} .
-				docker login -u ${cd_registry_cred_USR} -p ${cd_registry_cred_PSW} ${cd_registry_url}
-                docker tag ${app}:${version}-${BUILD_NUMBER} ${cd_registry_url}/${registry_project}/${app}:${version}-${BUILD_NUMBER}
-                docker push ${cd_registry_url}/${registry_project}/${app}:${version}-${BUILD_NUMBER}
-				"""
-			}
-            post {
-		        always {
-		            sh "docker logout ${cd_registry_url}"
-		        }
-			}
-		}
-		stage("[PFO RestApi] Add config map") {
-	    	when {
-	    	    expression { branch "develop" }
-	    	    anyOf {
-                    environment name: 'build_type', value: 'all'
-                    environment name: 'build_type', value: 'build_rest'
-                }
-	    	 }
-            agent {
-                docker {
-                    image'openshift/origin-cli'
-                    args '-u root:root'
-                }
-            }
+    stages {
+        stage('Initialize') {
             steps {
-                ocAddCMManifest(app, project+'/'+kubernetes_folder, registry_project)
+                colorLogger("PATH = ${PATH}", "info")
+                colorLogger("M2_HOME = ${M2_HOME}", "info")
+                colorLogger("commiter_name = ${commiter_name}", "info")
             }
         }
-		stage("[PFO RestApi] Deploy to OKD") {
-	    	when {
-	    	    expression { branch "develop" }
-	    	    anyOf {
-                    environment name: 'build_type', value: 'all'
-                    environment name: 'build_type', value: 'build_rest'
-                }
-	    	 }
-            agent {
-                docker {
-                    image'openshift/origin-cli'
-                    args '-u root:root'
-                }
+        stage('Check repository config') {
+            when {
+                expression { branch "develop" }
             }
             steps {
-                ocDeploy(project+'/'+kubernetes_folder, registry_project, app, cd_registry_url, version)
+                saveRepositoryConfig()
             }
         }
-        stage("[PFO RestApi] Add SVC") {
-	    	when {
-	    	    expression { branch "develop" }
-	    	    anyOf {
-                    environment name: 'build_type', value: 'all'
-                    environment name: 'build_type', value: 'build_rest'
+        stage('build and deploy application') {
+            when { branch "develop" }
+                environment {
+                    appDir = "${WORKSPACE}"  //added for example when repo contains multiple project
+                    // app = "${env.GIT_URL.replaceAll('https://github.com/mbuyakov/', '').replaceAll('.git', '').toLowerCase().replace(".","-").replace("_","-")}-adapter"
+                    app = "efp-oati-order-051001-adapter" // hardcode app name if it isn't correct from repo name
+                    vs = fileExists "${app}-vs.yml"
+                    svc = fileExists "${app}-svc.yml"
                 }
-	    	 }
-            agent {
-                docker {
-                    image'openshift/origin-cli'
-                    args '-u root:root'
-                }
-            }
-            steps {
-                ocAddSvc(app, project+'/'+kubernetes_folder, registry_project)
-            }
-        }
-        stage("[PFO RestApi] Add VS") {
-	    	when {
-	    	    expression { branch "develop" }
-	    	    anyOf {
-                    environment name: 'build_type', value: 'all'
-                    environment name: 'build_type', value: 'build_rest'
-                }
-	    	 }
-            agent {
-                docker {
-                    image'openshift/origin-cli'
-                    args '-u root:root'
-                }
-            }
-            steps {
-                ocAddVs(app, project+'/'+kubernetes_folder, registry_project)
-            }
-        }
-
-        //////////////
-
-		stage("[PFO UI] build") {
-	    	when {
-	    	    expression { branch "pfo_ui" }
-	    	    anyOf {
-                    environment name: 'build_type', value: 'all'
-                    environment name: 'build_type', value: 'build_ui'
-                }
-	    	}
-			steps {
-				sh """
-				cd ${project_ui}
-				mvn -f pom.xml clean install
-				"""
-			}
-		}
-		stage("[PFO UI] docker build") {
-	    	when {
-	    	    expression { branch "pfo_ui" }
-	    	    anyOf {
-                    environment name: 'build_type', value: 'all'
-                    environment name: 'build_type', value: 'build_ui'
-                }
-	    	 }
-			steps {
-				sh """
-				cd ${project_ui}
-				docker image build -t ${app_ui}:${version_ui}-${BUILD_NUMBER} .
-				docker login -u ${cd_registry_cred_USR} -p ${cd_registry_cred_PSW} ${cd_registry_url}
-                docker tag ${app_ui}:${version_ui}-${BUILD_NUMBER} ${cd_registry_url}/${registry_project}/${app_ui}:${version_ui}-${BUILD_NUMBER}
-                docker push ${cd_registry_url}/${registry_project}/${app_ui}:${version_ui}-${BUILD_NUMBER}
-				"""
-			}
-            post {
-		        always {
-		            sh "docker logout ${cd_registry_url}"
-		        }
-			}
-		}
-		stage("[PFO UI] Add config map") {
-		    when {
-                expression { branch "pfo_ui" }
-            	    anyOf {
-                        environment name: 'build_type', value: 'all'
-                        environment name: 'build_type', value: 'build_ui'
+                stages {
+                    stage('Check libs versions') {
+                       when {
+                            expression { branch "develop" }
+                            anyOf {
+                                environment name: 'build_type', value: 'all'
+                                environment name: 'build_type', value: 'build_and_deploy_app'
+                            }
+                        }
+                        steps {
+                            checkVersion()
+                        }
                     }
-            }
-            agent {
-                docker {
-                    image'openshift/origin-cli'
-                    args '-u root:root'
-                }
-            }
-            steps {
-                ocAddCMManifest(app_ui, project_ui+'/'+kubernetes_folder, registry_project)
-            }
-        }
-		stage("[PFO UI] Deploy to OKD") {
-		    when {
-                expression { branch "pfo_ui" }
-            	    anyOf {
-                        environment name: 'build_type', value: 'all'
-                        environment name: 'build_type', value: 'build_ui'
+                    stage('build application') {
+                        when {
+                            expression { branch "develop" }
+                            anyOf {
+                                environment name: 'build_type', value: 'all'
+                                environment name: 'build_type', value: 'build_and_deploy_app'
+                            }
+                        }
+                        steps {
+                            sh """
+                                mvn -s ${appDir}/nexus-settings.xml -f ${appDir}/pom.xml clean install
+                                mvn sonar:sonar -Dsonar.host.url=http://sonarqube.adm.sm-soft.ru || true
+                            """
+                        }
                     }
-            }
-            agent {
-                docker {
-                    image'openshift/origin-cli'
-                    args '-u root:root'
-                }
-            }
-            steps {
-                ocDeploy(project_ui+'/'+kubernetes_folder, registry_project, app_ui, cd_registry_url, version_ui)
-            }
-        }
-        stage("[PFO UI] Add SVC") {
-		    when {
-                expression { branch "pfo_ui" }
-            	anyOf {
-                    environment name: 'build_type', value: 'all'
-                    environment name: 'build_type', value: 'build_ui'
-                }
-            }
-            agent {
-                docker {
-                    image'openshift/origin-cli'
-                    args '-u root:root'
-                }
-            }
-            steps {
-                ocAddSvc(app_ui, project_ui+'/'+kubernetes_folder, registry_project)
-            }
-        }
-        stage("[PFO UI] Add VS") {
-		    when {
-                expression { branch "pfo_ui" }
-            	anyOf {
-                    environment name: 'build_type', value: 'all'
-                    environment name: 'build_type', value: 'build_ui'
-                }
-            }
-            agent {
-                docker {
-                    image'openshift/origin-cli'
-                    args '-u root:root'
-                }
-            }
-            steps {
-                ocAddVs(app_ui, project_ui+'/'+kubernetes_folder, registry_project)
-            }
-        }
+                    stage('prepare folder') {
+                        when {
+                            expression { branch "develop" }
+                            anyOf {
+                                environment name: 'build_type', value: 'all'
+                                environment name: 'build_type', value: 'build_and_deploy_app'
+                            }
+                        }
+                        steps {
+                            sh """
+                            echo "appDir = ${appDir}"
+                            cd ${appDir}
+                            rm -rf docker/efp-core/buildfiles/*.jar
+                            rm -rf docker/efp-core/buildfiles/efp-core-lib/*
+                            echo "copy build artifact"
+                            cp target/alternateLocation/*.jar docker/efp-core/buildfiles/
+                            cp target/*.jar docker/efp-core/buildfiles/efp-core-lib/
 
+                            ls -la docker/efp-core/buildfiles/
+                            ls -la docker/efp-core/buildfiles/efp-core-lib/
 
-	post {
-		success {
-			archiveArtifacts artifacts:'**/target/*.jar,**/target/*.war', fingerprint: true
-		}
-	}
-}
+                            tar czvf ${app}.tgz docker/*
+                        """
+                        }
+                    }
+                    stage('build image') {
+                        when {
+                            expression { branch "develop" }
+                            anyOf {
+                                environment name: 'build_type', value: 'all'
+                                environment name: 'build_type', value: 'build_and_deploy_app'
+                            }
+                        }
+                        steps {
+                            sh """
+                            cd ${appDir}/docker/efp-core/buildfiles
+                            docker image build -t ${app}:${version}-${BUILD_NUMBER} .
+                            docker login -u ${cd_registry_cred_USR} -p ${cd_registry_cred_PSW} ${cd_registry_url}
+                            docker tag ${app}:${version}-${BUILD_NUMBER} ${cd_registry_url}/${registry_project}/${app}:${version}-${BUILD_NUMBER}
+                            docker push ${cd_registry_url}/${registry_project}/${app}:${version}-${BUILD_NUMBER}
+                        """
+                        }
+                        post {
+                            always {
+                                sh """
+                                docker logout ${cd_registry_url}
+                            """
+                            }
+                        }
+                    }
+                    stage('openshift deployment') {
+                        when {
+                            expression { branch "develop" }
+                            anyOf {
+                                environment name: 'build_type', value: 'all'
+                                environment name: 'build_type', value: 'build_and_deploy_app'
+                            }
+                        }
+                        agent {
+                            docker {
+                                image 'openshift/origin-cli'
+                                args '-u root:root'
+                            }
+                        }
+                        environment {
+                        appDir = "${WORKSPACE}"
+                         }
+                        stages {
+                            stage('add configmap') {
+                                when {
+                                    expression { branch "develop" }
+                                    anyOf {
+                                        environment name: 'build_type', value: 'all'
+                                        environment name: 'build_type', value: 'build_and_deploy_app'
+                                    }
+                                }
+                                steps {
+                                    ocAddCMManifest(app, appDir, registry_project)
+                                }
+                            }
+                            stage('deploy to okd') {
+                                when {
+                                    expression { branch "develop" }
+                                    anyOf {
+                                        environment name: 'build_type', value: 'all'
+                                        environment name: 'build_type', value: 'build_and_deploy_app'
+                                    }
+                                }
+                                steps {
+                                    ocDeploy(appDir, registry_project, app, cd_registry_url, version)
+                                }
+                                post {
+                                    failure {
+                                        ocRollback(appDir, registry_project, app)
+                                    }
+                                }
+                            }
+                            stage('add svc') {
+                                when {
+                                    expression { branch "develop" }
+                                    expression { svc == 'true' }
+                                    anyOf {
+                                        environment name: 'build_type', value: 'all'
+                                        environment name: 'build_type', value: 'build_and_deploy_app'
+                                    }
+                                }
+                                steps {
+                                    ocAddSvc(app, appDir, registry_project)
+                                }
+
+                            }
+                            stage('add vs') {
+                                when {
+                                    expression { branch "develop" }
+                                    expression { vs == 'true' }
+                                    anyOf {
+                                        environment name: 'build_type', value: 'all'
+                                        environment name: 'build_type', value: 'build_and_deploy_app'
+                                    }
+                                }
+                                steps {
+                                    ocAddVs(app, appDir, registry_project)
+                                }
+                            }
+                        }
+                    }
+                     stage('archive artifact') {
+                        when {
+                            expression { branch "develop" }
+                            anyOf {
+                                environment name: 'build_type', value: 'all'
+                                environment name: 'build_type', value: 'build_and_deploy_app'
+                            }
+                        }
+                        steps {
+                            colorLogger("stage: archive artifact ${appDir}", "info")
+                            archiveArtifacts artifacts: "**/${app}.tgz", fingerprint: true
+                        }
+                     }
+                     stage('update_or_publish_api') {
+                          when {
+                              branch 'develop'
+                          }
+                          steps {
+                              updateOrPublishApiWithFile()
+                          }
+                      }
+                     stage('send robot conf') {
+                          when { expression { fileExists "${appDir}/test"} }
+                              steps {
+                                  loadRobotConfig(test_service_cred_USR, test_service_cred_PSW)
+                              }
+                      }
+                      stage('start robot') {
+                          steps {
+                              startRobot(test_service_cred_USR, test_service_cred_PSW, "051001")
+                          }
+                      }
+                     stage('Tests') {
+                         when {
+                             expression { branch "develop" }
+                                 anyOf {
+                                     environment name: 'build_type', value: 'all'
+                                     environment name: 'build_type', value: 'test_app'
+                                 }
+                             }
+                         steps {
+                             runEfpTestCollection("051001", "always_set_colletions.json")
+                         }
+                    }
+                }
+            }
+        }
+        post {
+            failure {
+                telegramSendNotification_v2()
+            }
+            unstable {
+                telegramSendNotification_v2("@DanilObyedkov ")
+            }
+        }
+    }
