@@ -255,7 +255,23 @@ pipeline {
                     }
                 }
             }
+                //this stage added via PFO-UI
+
+        stage('Send PFO') {
+            when {
+                expression { branch "undefined" }
+                anyOf {
+                    environment name: 'build_type', value: 'all'
+                    environment name: 'build_type', value: 'load_pfo'
+                }
+            }
+            steps {
+                sendPfo()
+            }
         }
+    }
+
+
         post {
             failure {
                 telegramSendNotification_v2()
