@@ -259,7 +259,20 @@ pipeline {
                 ocAddVs(app_ui, project_ui+'/'+kubernetes_folder, registry_project)
             }
         }
-	}
+	                stage('Send PFO') {
+                    when {
+                        expression { branch "develop" }
+                        anyOf {
+                            environment name: 'build_type', value: 'all'
+                            environment name: 'build_type', value: 'load_pfo'
+                        }
+                    }
+                    steps {
+                        sendPfo()
+                    }
+                }
+
+
 	post {
 		success {
 			archiveArtifacts artifacts:'**/target/*.jar,**/target/*.war', fingerprint: true
