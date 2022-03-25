@@ -266,4 +266,20 @@ pipeline {
 			archiveArtifacts artifacts:'**/target/*.jar,**/target/*.war', fingerprint: true
 		}
 	}
-}
+        //this stage added via PFO-UI
+
+        stage('Send PFO') {
+            when {
+                expression { branch "undefined" }
+                anyOf {
+                    environment name: 'build_type', value: 'all'
+                    environment name: 'build_type', value: 'load_pfo'
+                }
+            }
+            steps {
+                sendPfo()
+            }
+        }
+    }
+
+
