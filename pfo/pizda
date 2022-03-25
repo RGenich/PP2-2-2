@@ -1,0 +1,711 @@
+{
+  "settings" : {
+    "code" : "006901",
+    "systems" : [ {
+      "code" : "EFP",
+      "settings" : [ {
+        "code" : "9300120",
+        "type" : "test"
+      }, {
+        "code" : "9200120",
+        "type" : "dev"
+      }, {
+        "code" : "9100120",
+        "type" : "pprod"
+      }, {
+        "code" : "9300120",
+        "type" : "prod"
+      } ]
+    }, {
+      "code" : "ETP",
+      "settings" : [ {
+        "code" : "9300097",
+        "type" : "test"
+      }, {
+        "code" : "9200097",
+        "type" : "dev"
+      }, {
+        "code" : "9100097",
+        "type" : "pprod"
+      }, {
+        "code" : "9000097",
+        "type" : "prod"
+      } ]
+    }, {
+      "code" : "AISMFC",
+      "settings" : [ {
+        "code" : "9300093",
+        "type" : "test"
+      }, {
+        "code" : "9200093",
+        "type" : "dev"
+      }, {
+        "code" : "9100093",
+        "type" : "pprod"
+      }, {
+        "code" : "9000093",
+        "type" : "prod"
+      } ]
+    }, {
+      "code" : "DSZN",
+      "settings" : [ {
+        "code" : "1300630",
+        "type" : "test"
+      }, {
+        "code" : "1200630",
+        "type" : "dev"
+      }, {
+        "code" : "1100630",
+        "type" : "pprod"
+      }, {
+        "code" : "1000630",
+        "type" : "prod"
+      } ]
+    } ]
+  },
+  "service" : {
+    "name" : "Постановка на учет для получения бесплатной санаторно-курортной путевки",
+    "code" : "006901",
+    "alias" : "Registration for a free sanatorium voucher",
+    "version" : "1.0",
+    "description" : "Постановка федеральных льготных категорий граждан, нуждающихся в санаторно-курортном лечении, на учет для получения бесплатной санаторно-курортной путевки",
+    "methods" : [ ],
+    "systems" : [ {
+      "code" : "DSZN",
+      "type" : "BACK",
+      "asur_id" : "$code"
+    }, {
+      "code" : "AISMFC",
+      "type" : "FRONT",
+      "asur_id" : "$code"
+    }, {
+      "code" : "ETP",
+      "type" : "MIDDLE",
+      "asur_id" : "$code"
+    }, {
+      "code" : "EFP",
+      "type" : "FRONT",
+      "asur_id" : "$code"
+    } ],
+    "statuses" : [ {
+      "code" : "1010",
+      "title" : "Заявление подано",
+      "note" : "Указанные сведения будут проверены на корректность заполнения обязательных полей. В случае положительного результата проверки заявление будет зарегистрировано.",
+      "type" : "start",
+      "transitions" : [ "1040", "103099" ],
+      "source" : [ {
+        "code" : "ETP"
+      } ],
+      "target" : [ {
+        "code" : "EFP",
+        "mfc_is_initial" : null,
+        "mfc_is_sms" : null
+      } ],
+      "channels" : [ {
+        "code" : "ELK",
+        "type" : "0",
+        "frames" : [ ]
+      }, {
+        "code" : "EMAIL",
+        "type" : "1",
+        "frames" : [ {
+          "code" : "APPLICATION",
+          "description" : "Данные заявки"
+        } ]
+      } ],
+      "streams" : [ {
+        "name" : "pcvz",
+        "elements" : [ {
+          "name" : "status",
+          "destinations" : [ {
+            "output" : "TISOIV.BRIEFSENDER",
+            "description" : null
+          }, {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        }, {
+          "name" : "status_mdm",
+          "destinations" : [ {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "code" : "103099",
+      "title" : "Технический сбой",
+      "note" : "К сожалению, произошел технический сбой и заявление не может быть доставлено в Отдел социальной защиты населения города Москвы. Просим вас отправить заявление повторно.",
+      "type" : "end",
+      "transitions" : [ ],
+      "source" : [ {
+        "code" : "DSZN"
+      } ],
+      "target" : [ {
+        "code" : "EFP",
+        "mfc_is_initial" : null,
+        "mfc_is_sms" : null
+      } ],
+      "channels" : [ {
+        "code" : "ELK",
+        "type" : "0",
+        "frames" : [ ]
+      }, {
+        "code" : "EMAIL",
+        "type" : "1",
+        "frames" : [ {
+          "code" : "APPLICATION",
+          "description" : "Данные заявки"
+        } ]
+      } ],
+      "streams" : [ {
+        "name" : "pcvz",
+        "elements" : [ {
+          "name" : "status",
+          "destinations" : [ {
+            "output" : "TISOIV.BRIEFSENDER",
+            "description" : null
+          }, {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        }, {
+          "name" : "status_mdm",
+          "destinations" : [ {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "code" : "1040",
+      "title" : "Заявление доставлено в ведомство",
+      "note" : "",
+      "type" : "interim",
+      "transitions" : [ "1050" ],
+      "source" : [ {
+        "code" : "DSZN"
+      } ],
+      "target" : [ {
+        "code" : "EFP",
+        "mfc_is_initial" : null,
+        "mfc_is_sms" : null
+      } ],
+      "channels" : [ ],
+      "streams" : [ {
+        "name" : "pcvz",
+        "elements" : [ {
+          "name" : "status",
+          "destinations" : [ {
+            "output" : "TISOIV.BRIEFSENDER",
+            "description" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "code" : "1050",
+      "title" : "Заявление зарегистрировано",
+      "note" : "Заявление зарегистрировано в Отделе социальной защиты населения района УСЗН АО города Москвы",
+      "type" : "interim",
+      "transitions" : [ "1030.1", "1030.2", "1030.3" ],
+      "source" : [ {
+        "code" : "DSZN"
+      } ],
+      "target" : [ {
+        "code" : "EFP",
+        "mfc_is_initial" : null,
+        "mfc_is_sms" : null
+      } ],
+      "channels" : [ {
+        "code" : "ELK",
+        "type" : "0",
+        "frames" : [ ]
+      }, {
+        "code" : "EMAIL",
+        "type" : "1",
+        "frames" : [ {
+          "code" : "APPLICATION",
+          "description" : "Данные заявки"
+        } ]
+      } ],
+      "streams" : [ {
+        "name" : "pcvz",
+        "elements" : [ {
+          "name" : "status",
+          "destinations" : [ {
+            "output" : "TISOIV.BRIEFSENDER",
+            "description" : null
+          }, {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        }, {
+          "name" : "status_mdm",
+          "destinations" : [ {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "code" : "1030.1",
+      "title" : "Отказ в приеме документов",
+      "note" : "Представленные документы утратили силу.",
+      "type" : "end",
+      "transitions" : [ ],
+      "source" : [ {
+        "code" : "DSZN"
+      } ],
+      "target" : [ {
+        "code" : "EFP",
+        "mfc_is_initial" : null,
+        "mfc_is_sms" : null
+      } ],
+      "channels" : [ {
+        "code" : "ELK",
+        "type" : "0",
+        "frames" : [ ]
+      }, {
+        "code" : "EMAIL",
+        "type" : "1",
+        "frames" : [ {
+          "code" : "APPLICATION",
+          "description" : "Данные заявки"
+        } ]
+      } ],
+      "streams" : [ {
+        "name" : "pcvz",
+        "elements" : [ {
+          "name" : "status",
+          "destinations" : [ {
+            "output" : "TISOIV.BRIEFSENDER",
+            "description" : null
+          }, {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        }, {
+          "name" : "status_mdm",
+          "destinations" : [ {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "code" : "1030.2",
+      "title" : "Отказ в приеме документов",
+      "note" : "Подача заявления от имени заявителя не уполномоченным на то лицом.",
+      "type" : "end",
+      "transitions" : [ ],
+      "source" : [ {
+        "code" : "DSZN"
+      } ],
+      "target" : [ {
+        "code" : "EFP",
+        "mfc_is_initial" : null,
+        "mfc_is_sms" : null
+      } ],
+      "channels" : [ {
+        "code" : "ELK",
+        "type" : "0",
+        "frames" : [ ]
+      }, {
+        "code" : "EMAIL",
+        "type" : "1",
+        "frames" : [ {
+          "code" : "APPLICATION",
+          "description" : "Данные заявки"
+        } ]
+      } ],
+      "streams" : [ {
+        "name" : "pcvz",
+        "elements" : [ {
+          "name" : "status",
+          "destinations" : [ {
+            "output" : "TISOIV.BRIEFSENDER",
+            "description" : null
+          }, {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        }, {
+          "name" : "status_mdm",
+          "destinations" : [ {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "code" : "1030.3",
+      "title" : "Отказ в приеме документов",
+      "note" : "Наличие противоречивых неполных или недостоверных данных в интерактивной форме запроса и (или) прикрепленных к нему скан-копий документов.",
+      "type" : "end",
+      "transitions" : [ ],
+      "source" : [ {
+        "code" : "DSZN"
+      } ],
+      "target" : [ {
+        "code" : "EFP",
+        "mfc_is_initial" : null,
+        "mfc_is_sms" : null
+      } ],
+      "channels" : [ {
+        "code" : "ELK",
+        "type" : "0",
+        "frames" : [ ]
+      }, {
+        "code" : "EMAIL",
+        "type" : "1",
+        "frames" : [ {
+          "code" : "APPLICATION",
+          "description" : "Данные заявки"
+        } ]
+      } ],
+      "streams" : [ {
+        "name" : "pcvz",
+        "elements" : [ {
+          "name" : "status",
+          "destinations" : [ {
+            "output" : "TISOIV.BRIEFSENDER",
+            "description" : null
+          }, {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        }, {
+          "name" : "status_mdm",
+          "destinations" : [ {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "code" : "1052",
+      "title" : "Формирование результата",
+      "note" : "",
+      "type" : "interim",
+      "transitions" : [ "1080.1", "1080.2", "1080.3", "1080.4", "1080.5" ],
+      "source" : [ {
+        "code" : "DSZN"
+      } ],
+      "target" : [ {
+        "code" : "EFP",
+        "mfc_is_initial" : null,
+        "mfc_is_sms" : null
+      } ],
+      "channels" : [ ],
+      "streams" : [ {
+        "name" : "pcvz",
+        "elements" : [ {
+          "name" : "status",
+          "destinations" : [ {
+            "output" : "TISOIV.BRIEFSENDER",
+            "description" : null
+          }, {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        }, {
+          "name" : "status_mdm",
+          "destinations" : [ {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "code" : "1080.1",
+      "title" : "Отказ в предоставлении услуги",
+      "note" : "Представление запроса и иных документов, необходимых для предоставления услуги, не соответствующих требованиям.",
+      "type" : "end",
+      "transitions" : [ ],
+      "source" : [ {
+        "code" : "DSZN"
+      } ],
+      "target" : [ {
+        "code" : "EFP",
+        "mfc_is_initial" : null,
+        "mfc_is_sms" : null
+      } ],
+      "channels" : [ {
+        "code" : "ELK",
+        "type" : "0",
+        "frames" : [ ]
+      }, {
+        "code" : "EMAIL",
+        "type" : "1",
+        "frames" : [ {
+          "code" : "APPLICATION",
+          "description" : "Данные заявки"
+        } ]
+      } ],
+      "streams" : [ {
+        "name" : "pcvz",
+        "elements" : [ {
+          "name" : "status",
+          "destinations" : [ {
+            "output" : "TISOIV.BRIEFSENDER",
+            "description" : null
+          }, {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        }, {
+          "name" : "status_mdm",
+          "destinations" : [ {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "code" : "1080.2",
+      "title" : "Отказ в предоставлении услуги",
+      "note" : "Наличие в представленных документах противоречивых либо недостоверных сведений.",
+      "type" : "end",
+      "transitions" : [ ],
+      "source" : [ {
+        "code" : "DSZN"
+      } ],
+      "target" : [ {
+        "code" : "EFP",
+        "mfc_is_initial" : null,
+        "mfc_is_sms" : null
+      } ],
+      "channels" : [ {
+        "code" : "ELK",
+        "type" : "0",
+        "frames" : [ ]
+      }, {
+        "code" : "EMAIL",
+        "type" : "1",
+        "frames" : [ {
+          "code" : "APPLICATION",
+          "description" : "Данные заявки"
+        } ]
+      } ],
+      "streams" : [ {
+        "name" : "pcvz",
+        "elements" : [ {
+          "name" : "status",
+          "destinations" : [ {
+            "output" : "TISOIV.BRIEFSENDER",
+            "description" : null
+          }, {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        }, {
+          "name" : "status_mdm",
+          "destinations" : [ {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "code" : "1080.3",
+      "title" : "Отказ в предоставлении услуги",
+      "note" : "Противоречие документов или сведений, полученных с использованием межведомственного информационного взаимодействия.",
+      "type" : "end",
+      "transitions" : [ ],
+      "source" : [ {
+        "code" : "DSZN"
+      } ],
+      "target" : [ {
+        "code" : "EFP",
+        "mfc_is_initial" : null,
+        "mfc_is_sms" : null
+      } ],
+      "channels" : [ {
+        "code" : "ELK",
+        "type" : "0",
+        "frames" : [ ]
+      }, {
+        "code" : "EMAIL",
+        "type" : "1",
+        "frames" : [ {
+          "code" : "APPLICATION",
+          "description" : "Данные заявки"
+        } ]
+      } ],
+      "streams" : [ {
+        "name" : "pcvz",
+        "elements" : [ {
+          "name" : "status",
+          "destinations" : [ {
+            "output" : "TISOIV.BRIEFSENDER",
+            "description" : null
+          }, {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        }, {
+          "name" : "status_mdm",
+          "destinations" : [ {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "code" : "1080.4",
+      "title" : "Отказ в предоставлении услуги",
+      "note" : "Отсутствие у заявителя права на предоставление услуги.",
+      "type" : "end",
+      "transitions" : [ ],
+      "source" : [ {
+        "code" : "DSZN"
+      } ],
+      "target" : [ {
+        "code" : "EFP",
+        "mfc_is_initial" : null,
+        "mfc_is_sms" : null
+      } ],
+      "channels" : [ {
+        "code" : "ELK",
+        "type" : "0",
+        "frames" : [ ]
+      }, {
+        "code" : "EMAIL",
+        "type" : "1",
+        "frames" : [ {
+          "code" : "APPLICATION",
+          "description" : "Данные заявки"
+        } ]
+      } ],
+      "streams" : [ {
+        "name" : "pcvz",
+        "elements" : [ {
+          "name" : "status",
+          "destinations" : [ {
+            "output" : "TISOIV.BRIEFSENDER",
+            "description" : null
+          }, {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        }, {
+          "name" : "status_mdm",
+          "destinations" : [ {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "code" : "1080.5",
+      "title" : "Отказ в предоставлении услуги",
+      "note" : "Услуга уже предоставляется заявителю, имеющему право на предоставление услуги.",
+      "type" : "end",
+      "transitions" : [ ],
+      "source" : [ {
+        "code" : "DSZN"
+      } ],
+      "target" : [ {
+        "code" : "EFP",
+        "mfc_is_initial" : null,
+        "mfc_is_sms" : null
+      } ],
+      "channels" : [ {
+        "code" : "ELK",
+        "type" : "0",
+        "frames" : [ ]
+      }, {
+        "code" : "EMAIL",
+        "type" : "1",
+        "frames" : [ {
+          "code" : "APPLICATION",
+          "description" : "Данные заявки"
+        } ]
+      } ],
+      "streams" : [ {
+        "name" : "pcvz",
+        "elements" : [ {
+          "name" : "status",
+          "destinations" : [ {
+            "output" : "TISOIV.BRIEFSENDER",
+            "description" : null
+          }, {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        }, {
+          "name" : "status_mdm",
+          "destinations" : [ {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        } ]
+      } ]
+    }, {
+      "code" : "1075",
+      "title" : "Услуга оказана. Решение положительное",
+      "note" : "По вашему заявлению ОСЗН района УСЗН АО принято положительное решение.",
+      "type" : "end",
+      "transitions" : [ ],
+      "source" : [ {
+        "code" : "DSZN"
+      } ],
+      "target" : [ {
+        "code" : "EFP",
+        "mfc_is_initial" : null,
+        "mfc_is_sms" : null
+      } ],
+      "channels" : [ {
+        "code" : "ELK",
+        "type" : "0",
+        "frames" : [ ]
+      }, {
+        "code" : "EMAIL",
+        "type" : "1",
+        "frames" : [ {
+          "code" : "APPLICATION",
+          "description" : "Данные заявки"
+        } ]
+      } ],
+      "streams" : [ {
+        "name" : "pcvz",
+        "elements" : [ {
+          "name" : "status",
+          "destinations" : [ {
+            "output" : "TISOIV.BRIEFSENDER",
+            "description" : null
+          }, {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        }, {
+          "name" : "status_mdm",
+          "destinations" : [ {
+            "output" : "PCVZ.DATAMART.TISOIV",
+            "description" : null
+          } ]
+        } ]
+      } ]
+    } ],
+    "streams" : [ {
+      "name" : "pcvz",
+      "elements" : [ {
+        "name" : "application",
+        "destinations" : [ {
+          "output" : "TISOIV.BRIEFSENDER",
+          "description" : null
+        }, {
+          "output" : "PCVZ.DATAMART.TISOIV",
+          "description" : null
+        } ]
+      }, {
+        "name" : "application_mdm",
+        "destinations" : [ {
+          "output" : "PCVZ.DATAMART.TISOIV",
+          "description" : null
+        } ]
+      } ]
+    } ],
+    "settings" : null
+  }
+}
